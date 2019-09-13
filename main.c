@@ -7,6 +7,7 @@
 #define NUM_OF_RAYS 180
 
 typedef enum GameScren { LOGO, TITLE, GAMEPLAY } GameScreen;
+typedef enum RayRender { EndPoint, Gradient, EndPointGradient, inverseGradient } RayRender;
 
 typedef struct Player
 {
@@ -25,6 +26,7 @@ typedef struct RayToCast
     Vector2 steps;
     int numberOfSteps;
     bool draw;
+    int stepMultiple;
 
 } RayToCast;
 
@@ -40,6 +42,7 @@ int main(void)
 
     const int screenWidth = 600;
     const int screenHeight = 600;
+    const int frameRate = 60;
 
     InitWindow(screenWidth, screenHeight, "2D RayCasting");
 
@@ -48,16 +51,17 @@ int main(void)
     // Game varibles
     GameScreen screen = LOGO;
     int framesCounter = 0;
-    bool drawRay = false;
+    RayRender render = EndPoint;
+    bool debugLog = false;
     int map[100] = { 1,1,1,1,1,1,1,1,1,1,
-                     1,0,1,0,0,0,0,0,0,1,
-                     1,0,1,1,1,1,0,1,1,1,
                      1,0,0,0,0,0,0,0,0,1,
-                     1,0,1,0,1,0,1,0,0,1,
-                     1,0,1,0,1,0,1,0,0,1,
-                     1,0,1,0,1,0,1,0,0,1,
-                     1,0,1,0,1,0,1,1,1,1,
-                     1,0,0,0,1,0,0,0,0,1,
+                     1,0,1,1,1,1,1,1,0,1,
+                     1,0,1,0,0,0,0,1,0,1,
+                     1,0,0,0,0,0,0,1,0,1,
+                     1,0,0,0,0,0,0,1,0,1,
+                     1,0,1,0,0,0,0,1,0,1,
+                     1,0,1,1,1,1,1,1,0,1,
+                     1,0,0,0,0,0,0,0,0,1,
                      1,1,1,1,1,1,1,1,1,1 };
 
     // check structs
@@ -90,6 +94,7 @@ int main(void)
         rays[i].steps = (Vector2) { 0.0f, 0.0f };
         rays[i].numberOfSteps = 0;
         rays[i].draw = false;
+        rays[i].stepMultiple = 10;
     }
 
     //init map
@@ -109,7 +114,7 @@ int main(void)
         }
     }
     
-    SetTargetFPS(60);
+    SetTargetFPS(frameRate);
 
     while (!WindowShouldClose())
     {
@@ -143,7 +148,7 @@ int main(void)
                 if (IsKeyDown(KEY_DOWN)) player.speed.y += 0.35f;
                 if (IsKeyDown(KEY_LEFT)) player.speed.x -= 0.35f;
                 if (IsKeyDown(KEY_RIGHT)) player.speed.x += 0.35f;
-                
+
                 for (int i = 0; i < 100; i++)
                 {
                     if (CheckCollisionPointRec(player.position, mapCubes[i].cubeBounds) == false)
@@ -157,7 +162,39 @@ int main(void)
                 if (player.speed.y > 0) player.speed.y -= 0.1f;
                 if (player.speed.y < 0) player.speed.y += 0.1f;
                 
-                if (IsKeyPressed(KEY_R)) drawRay = !drawRay;
+                switch (render)
+                {
+                    case EndPoint:
+                    { if (IsKeyPressed(KEY_R)) render = Gradient; } break;
+                    
+                    case Gradient:
+                    { if (IsKeyPressed(KEY_R)) render = EndPointGradient; } break;
+
+                    case EndPointGradient:
+                    { if (IsKeyPressed(KEY_R)) render = inverseGradient; } break;
+
+                    case inverseGradient:
+                    { if (IsKeyPressed(KEY_R)) render = EndPoint; } break;
+                
+                    default: break;
+                }
+
+                if (IsKeyPressed(KEY_X))
+                {     
+                    for (int i = 0; i < NUM_OF_RAYS; i++)
+                    {
+                        rays[i].stepMultiple++;
+                    }
+                }
+                if (IsKeyPressed(KEY_Z))
+                {
+                    for (int i = 0; i < NUM_OF_RAYS; i++)
+                    {
+                        if (rays[i].stepMultiple != 1) rays[i].stepMultiple--;
+                    }
+                }
+                if (IsKeyPressed(KEY_C)) debugLog = !debugLog;
+
 
                 // Calculate the rays
                 for (int i = 0; i < NUM_OF_RAYS; i++)
@@ -167,8 +204,8 @@ int main(void)
                     rays[i].startPosition = player.position;
                     rays[i].endPosition = player.position;
                     rays[i].hit = false;
-                    rays[i].steps.x = cos((PI/180) * rays[i].angle);
-                    rays[i].steps.y = sin((PI/180) * rays[i].angle);
+                    rays[i].steps.x = (cos((PI/180) * rays[i].angle)) * rays[i].stepMultiple;
+                    rays[i].steps.y = (sin((PI/180) * rays[i].angle)) * rays[i].stepMultiple;
                     while (!rays[i].hit)
                     {
                         rays[i].endPosition.x += rays[i].steps.x;
@@ -228,31 +265,103 @@ int main(void)
 
                 case GAMEPLAY:
                 {
-                    for (int i = 0; i < NUM_OF_RAYS; i++)
+                    switch (render)
                     {
-                        if (rays[i].draw)
+                        case EndPoint:
                         {
-                            if (drawRay)
+                            for (int i = 0; i < NUM_OF_RAYS; i++)
                             {
-                                for (int j = 0; j < rays[i].numberOfSteps; j++)
+                                if (rays[i].draw)
                                 {
-                                    int color = ((float)j / (float)rays[i].numberOfSteps) * -255;
-                                    Color rayColor = (Color) { color,color,color,color };
-                                    DrawPixel((rays[i].steps.x * j) + rays[i].startPosition.x, (rays[i].steps.y * j) + rays[i].startPosition.y, rayColor);
                                     DrawPixel(rays[i].endPosition.x, rays[i].endPosition.y, WHITE);
                                 }
                             }
-                            else 
+                        } break;
+
+                        case Gradient:
+                        {
+                            for (int i = 0; i < NUM_OF_RAYS; i++)
                             {
-                                DrawPixel(rays[i].endPosition.x, rays[i].endPosition.y, WHITE);
+                                if(rays[i].draw)
+                                {
+                                    for (int j = 0; j < rays[i].numberOfSteps; j++)
+                                    {
+                                        int color = ((float)j / (float)rays[i].numberOfSteps) * -255;
+                                        Color rayColor = (Color) { color,color,color,color };
+                                        DrawPixel((rays[i].steps.x * j) + rays[i].startPosition.x, (rays[i].steps.y * j) + rays[i].startPosition.y, rayColor);
+                                    }
+                                }
                             }
-                        }
+                            
+                        } break;
+
+                        case EndPointGradient:
+                        {
+                            for (int i = 0; i < NUM_OF_RAYS; i++)
+                            {
+                                if (rays[i].draw)
+                                {
+                                    for (int j = 0; j < rays[i].numberOfSteps; j++)
+                                    {
+                                        int color = ((float)j / (float)rays[i].numberOfSteps) * -255;
+                                        Color rayColor = (Color) { color,color,color,color };
+                                        DrawPixel((rays[i].steps.x * j) + rays[i].startPosition.x, (rays[i].steps.y * j) + rays[i].startPosition.y, rayColor);
+                                    }
+                                    DrawPixel(rays[i].endPosition.x, rays[i].endPosition.y, WHITE);
+                                }
+                            }
+                        } break;
+
+                        case inverseGradient:
+                        {
+                            for (int i = 0; i < NUM_OF_RAYS; i++)
+                            {
+                                if (rays[i].draw)
+                                {
+                                    for (int j = 0; j < rays[i].numberOfSteps; j++)
+                                    {
+                                        int color = ((float)j / (float)rays[i].numberOfSteps) * 255;
+                                        Color rayColor = (Color) { color,color,color,color };
+                                        DrawPixel((rays[i].steps.x * j) + rays[i].startPosition.x, (rays[i].steps.y * j) + rays[i].startPosition.y, rayColor);
+                                    }
+                                }
+                            }
+                            
+                        } break;
+                
+                        default: break;
                     }
                     
                     DrawPixel(player.position.x, player.position.y, GREEN);
 
-                    DrawFPS(20,20);
+                    if (debugLog)
+                    {
                     
+                        float addedLength = 0.0f;
+                        for (int i = 0; i < NUM_OF_RAYS; i++)
+                        {
+                            addedLength += rays[i].length;
+                        }
+                        addedLength = addedLength / frayCount;
+
+                        float averageSteps = 0.0f;
+                        for (int i = 0; i < NUM_OF_RAYS; i++)
+                        {
+                            averageSteps += rays[i].numberOfSteps;
+                        }
+                        averageSteps = averageSteps / frayCount;
+                        DrawText(FormatText("Player Speed: %0.2f, %0.2f", player.speed.x, player.speed.y), 20, 490, 10, GREEN);
+                        DrawText(FormatText("Player Position: %0.2f,%0.2f", player.position.x, player.position.y), 20, 500, 10, GREEN);
+                        DrawText(FormatText("Average Ray Length: %0.2f", addedLength / rays[1].stepMultiple), 20, 510, 10, GREEN);
+                        DrawText(FormatText("Average Steps: %0.2f", averageSteps), 20,520,10,GREEN);
+                        DrawText(FormatText("Frame Time: %0.2f ms", GetFrameTime() * 1000), 20, 530, 10, GREEN);
+                        DrawText(FormatText("Target Frame Time: %0.2f ms", (1/(float)frameRate) * 1000), 20, 540, 10, GREEN);
+                        DrawText(FormatText("Time Scale: %0.2f", GetFrameTime() / (1 / (float) frameRate)), 20, 550, 10, GREEN);
+                        DrawText(FormatText("Set Frame Rate: %d", frameRate), 20, 560, 10, GREEN);
+                        DrawText(FormatText("Step Multiple: %d", rays[1].stepMultiple), 20, 570, 10, GREEN);
+                        DrawText(FormatText("Number of Rays: %d", NUM_OF_RAYS), 20, 580, 10, GREEN);
+                        DrawFPS(20,20);
+                    }
                     
                 } break;
             
