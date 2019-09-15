@@ -4,7 +4,7 @@
 #include <math.h>
 #include <stdio.h>
 
-#define NUM_OF_RAYS 360
+#define NUM_OF_RAYS 180
 
 typedef enum GameScreen { LOGO, TITLE, GAMEPLAY } GameScreen;
 typedef enum RayRender { EndPoint, Gradient, EndPointGradient, inverseGradient, lines } RayRender;
@@ -54,6 +54,7 @@ int main(void)
     RayRender render = EndPoint;
     bool debugLog = false;
     bool drawMap = false;
+    float longestRay;
     int map[100] = { 1,1,1,1,1,1,1,1,1,1,
                      1,0,0,0,0,0,0,0,0,1,
                      1,0,0,0,0,0,0,0,0,1,
@@ -201,6 +202,7 @@ int main(void)
                 if (IsKeyPressed(KEY_F)) drawMap = !drawMap;
 
                 // Calculate the rays
+                longestRay = 0.0f;
                 for (int i = 0; i < NUM_OF_RAYS; i++)
                 {
                     rays[i].draw = false;
@@ -242,33 +244,21 @@ int main(void)
                         }
                     }
                     rays[i].length = sqrt(pow(rays[i].endPosition.x - rays[i].startPosition.x, 2) + pow(rays[i].endPosition.y - rays[i].startPosition.y, 2));
-
-
-                    // Yes, probably not the best practice but im tired ok.
-                    if (rays[i].length > 290)
-                    { rays[i].stepMultiple = 11; }
-                    if (rays[i].length > 260 && rays[i].length < 290)
-                    { rays[i].stepMultiple = 10; }
-                    if (rays[i].length > 230 && rays[i].length < 260)
-                    { rays[i].stepMultiple = 9; }
-                    if (rays[i].length > 210 && rays[i].length < 230)
-                    { rays[i].stepMultiple = 8; }
-                    if (rays[i].length > 180 && rays[i].length < 210)
-                    { rays[i].stepMultiple = 7; }
-                    if (rays[i].length > 150 && rays[i].length < 180)
-                    { rays[i].stepMultiple = 6; }
-                    if (rays[i].length > 120 && rays[i].length < 150)
-                    { rays[i].stepMultiple = 5; }
-                    if (rays[i].length > 90 && rays[i].length < 120)
-                    { rays[i].stepMultiple = 4; }
-                    if (rays[i].length > 60 && rays[i].length < 90)
-                    { rays[i].stepMultiple = 3; }
-                    if (rays[i].length > 30 && rays[i].length < 60)
-                    { rays[i].stepMultiple = 2; }
-                    if (rays[i].length > 0 && rays[i].length < 30)
-                    { rays[i].stepMultiple = 1; }
+                    if (rays[i].length > longestRay)
+                    {
+                        longestRay = rays[i].length;
+                    }
                 }
-                
+
+                for (int i = 0; i < NUM_OF_RAYS; i++)
+                {
+                    rays[i].stepMultiple = (rays[i].length / longestRay) * 10;
+                    if (rays[i].stepMultiple == 0)
+                    {
+                        rays[i].stepMultiple = 1;
+                    } 
+                }
+
             } break;
             
             default: break;
@@ -429,6 +419,7 @@ int main(void)
                         default:
                             break;
                         }
+                        DrawText(FormatText("Longest Ray: %0.2f", longestRay), 20, 470, 10, GREEN);
                         DrawText(FormatText("Player Speed: %0.2f, %0.2f", player.speed.x, player.speed.y), 20, 490, 10, GREEN);
                         DrawText(FormatText("Player Position: %0.2f,%0.2f", player.position.x, player.position.y), 20, 500, 10, GREEN);
                         DrawText(FormatText("Average Ray Length: %0.2f", addedLength / rays[1].stepMultiple), 20, 510, 10, GREEN);
