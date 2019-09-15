@@ -8,6 +8,7 @@
 
 typedef enum GameScreen { LOGO, TITLE, GAMEPLAY } GameScreen;
 typedef enum RayRender { EndPoint, Gradient, EndPointGradient, inverseGradient, lines } RayRender;
+typedef enum SideHit { NONE, LEFT, RIGHT, TOP, BOTTOM } SideHit;
 
 typedef struct Player
 {
@@ -27,13 +28,17 @@ typedef struct RayToCast
     int numberOfSteps;
     bool draw;
     int stepMultiple;
-
+    SideHit side;
+    bool bounce;
+    int cubeHit;
+    bool color;
 } RayToCast;
 
 typedef struct MapCube
 {
     Rectangle cubeBounds;
     bool draw; 
+    Vector2 centerPosition;
 } MapCube;
 
 int main(void)
@@ -97,6 +102,10 @@ int main(void)
         rays[i].numberOfSteps = 0;
         rays[i].draw = false;
         rays[i].stepMultiple = 10;
+        rays[i].side = NONE;
+        rays[i].bounce = false;
+        rays[i].cubeHit = 101;
+        rays[i].color = false;
     }
 
     //init map
@@ -106,6 +115,7 @@ int main(void)
         mapCubes[i].cubeBounds.width = 60;
         mapCubes[i].cubeBounds.x = (i % 10) * 60;
         mapCubes[i].cubeBounds.y = (i / 10 ) * 60;
+        mapCubes[i].centerPosition = (Vector2) { mapCubes[i].cubeBounds.x + (mapCubes[i].cubeBounds.width / 2), mapCubes[i].cubeBounds.y + (mapCubes[i].cubeBounds.height / 2) };
         if (map[i] == 1)
         {
             mapCubes[i].draw = true;
@@ -184,27 +194,21 @@ int main(void)
                     default: break;
                 }
 
-                if (IsKeyPressed(KEY_X))
-                {     
-                    for (int i = 0; i < NUM_OF_RAYS; i++)
-                    {
-                        rays[i].stepMultiple++;
-                    }
-                }
-                if (IsKeyPressed(KEY_Z))
-                {
-                    for (int i = 0; i < NUM_OF_RAYS; i++)
-                    {
-                        if (rays[i].stepMultiple != 1) rays[i].stepMultiple--;
-                    }
-                }
                 if (IsKeyPressed(KEY_C)) debugLog = !debugLog;
-                if (IsKeyPressed(KEY_F)) drawMap = !drawMap;
-
+                if (IsKeyPressed(KEY_F)) 
+                {
+                    drawMap = !drawMap;
+                    for (int i = 0; i < NUM_OF_RAYS; i++)
+                    {
+                        rays[i].color = !rays[i].color;
+                    }
+                    
+                }
                 // Calculate the rays
                 longestRay = 0.0f;
                 for (int i = 0; i < NUM_OF_RAYS; i++)
                 {
+                    rays[i].side = NONE;
                     rays[i].draw = false;
                     rays[i].numberOfSteps = 0;
                     rays[i].startPosition = player.position;
@@ -233,6 +237,12 @@ int main(void)
                                 {
                                     rays[i].hit = true;
                                     rays[i].draw = true;
+                                    rays[i].cubeHit = j;
+
+                                    if (rays[i].side == NONE && rays[i].endPosition.x + 10 > (mapCubes[j].cubeBounds.x + mapCubes[j].cubeBounds.width)) { rays[i].side = RIGHT; }
+                                    if (rays[i].side == NONE && rays[i].endPosition.x - 10 < mapCubes[j].cubeBounds.x) { rays[i].side = LEFT; }
+                                    if (rays[i].side == NONE && rays[i].endPosition.y + 10 > (mapCubes[j].cubeBounds.y + mapCubes[j].cubeBounds.height)) { rays[i].side = BOTTOM; }
+                                    if (rays[i].side == NONE && rays[i].endPosition.y - 10 < mapCubes[j].cubeBounds.y) { rays[i].side = TOP; }
                                 }
                             }
                             
@@ -353,7 +363,27 @@ int main(void)
                             {
                                 if (rays[i].draw)
                                 {
-                                    DrawLine(rays[i].startPosition.x, rays[i].startPosition.y, rays[i].endPosition.x, rays[i].endPosition.y, WHITE);
+                                    if (rays[i].color)
+                                    {
+                                        switch (rays[i].side)
+                                        {
+                                            case RIGHT:
+                                            { DrawLine(rays[i].startPosition.x, rays[i].startPosition.y, rays[i].endPosition.x, rays[i].endPosition.y, BLUE); } break;
+                                            case LEFT:
+                                            { DrawLine(rays[i].startPosition.x, rays[i].startPosition.y, rays[i].endPosition.x, rays[i].endPosition.y, (Color) { 139, 0, 0, 255 }); } break;
+                                            case TOP:
+                                            { DrawLine(rays[i].startPosition.x, rays[i].startPosition.y, rays[i].endPosition.x, rays[i].endPosition.y, VIOLET); } break;
+                                            case BOTTOM:
+                                            { DrawLine(rays[i].startPosition.x, rays[i].startPosition.y, rays[i].endPosition.x, rays[i].endPosition.y, (Color) { 0, 128, 128, 255 }); } break;
+                                            case NONE:
+                                            { DrawLine(rays[i].startPosition.x, rays[i].startPosition.y, rays[i].endPosition.x, rays[i].endPosition.y, WHITE); } break;
+                                        }
+                                    }
+
+                                    if (!rays[i].color)
+                                    {
+                                        DrawLine(rays[i].startPosition.x, rays[i].startPosition.y, rays[i].endPosition.x, rays[i].endPosition.y, WHITE);
+                                    }
                                 }
                             }
                             
@@ -369,6 +399,11 @@ int main(void)
                             if ( mapCubes[i].draw)
                             {
                                 DrawRectangle(mapCubes[i].cubeBounds.x, mapCubes[i].cubeBounds.y, mapCubes[i].cubeBounds.width, mapCubes[i].cubeBounds.height, DARKGRAY);
+                                DrawPixel(mapCubes[i].centerPosition.x, mapCubes[i].centerPosition.y, RED);
+                                for (int j = 0; j < NUM_OF_RAYS; j++)
+                                {
+                                    if (rays[j].cubeHit == i) DrawLine(rays[j].endPosition.x, rays[j].endPosition.y, mapCubes[i].centerPosition.x, mapCubes[i].centerPosition.y, RED);
+                                }
                             }
                         }
                     }
