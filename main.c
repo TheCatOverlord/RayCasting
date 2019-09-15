@@ -4,10 +4,10 @@
 #include <math.h>
 #include <stdio.h>
 
-#define NUM_OF_RAYS 180
+#define NUM_OF_RAYS 360
 
-typedef enum GameScren { LOGO, TITLE, GAMEPLAY } GameScreen;
-typedef enum RayRender { EndPoint, Gradient, EndPointGradient, inverseGradient } RayRender;
+typedef enum GameScreen { LOGO, TITLE, GAMEPLAY } GameScreen;
+typedef enum RayRender { EndPoint, Gradient, EndPointGradient, inverseGradient, lines } RayRender;
 
 typedef struct Player
 {
@@ -53,14 +53,15 @@ int main(void)
     int framesCounter = 0;
     RayRender render = EndPoint;
     bool debugLog = false;
+    bool drawMap = false;
     int map[100] = { 1,1,1,1,1,1,1,1,1,1,
                      1,0,0,0,0,0,0,0,0,1,
-                     1,0,1,1,1,1,1,1,0,1,
-                     1,0,1,0,0,0,0,1,0,1,
-                     1,0,0,0,0,0,0,1,0,1,
-                     1,0,0,0,0,0,0,1,0,1,
-                     1,0,1,0,0,0,0,1,0,1,
-                     1,0,1,1,1,1,1,1,0,1,
+                     1,0,0,0,0,0,0,0,0,1,
+                     1,0,0,0,0,0,0,0,0,1,
+                     1,0,0,0,0,0,0,0,0,1,
+                     1,0,0,0,0,0,0,0,0,1,
+                     1,0,0,0,0,0,0,0,0,1,
+                     1,0,0,0,0,0,0,0,0,1,
                      1,0,0,0,0,0,0,0,0,1,
                      1,1,1,1,1,1,1,1,1,1 };
 
@@ -174,6 +175,9 @@ int main(void)
                     { if (IsKeyPressed(KEY_R)) render = inverseGradient; } break;
 
                     case inverseGradient:
+                    { if (IsKeyPressed(KEY_R)) render = lines; } break;
+
+                    case lines:
                     { if (IsKeyPressed(KEY_R)) render = EndPoint; } break;
                 
                     default: break;
@@ -194,7 +198,7 @@ int main(void)
                     }
                 }
                 if (IsKeyPressed(KEY_C)) debugLog = !debugLog;
-
+                if (IsKeyPressed(KEY_F)) drawMap = !drawMap;
 
                 // Calculate the rays
                 for (int i = 0; i < NUM_OF_RAYS; i++)
@@ -238,7 +242,31 @@ int main(void)
                         }
                     }
                     rays[i].length = sqrt(pow(rays[i].endPosition.x - rays[i].startPosition.x, 2) + pow(rays[i].endPosition.y - rays[i].startPosition.y, 2));
-                       
+
+
+                    // Yes, probably not the best practice but im tired ok.
+                    if (rays[i].length > 290)
+                    { rays[i].stepMultiple = 11; }
+                    if (rays[i].length > 260 && rays[i].length < 290)
+                    { rays[i].stepMultiple = 10; }
+                    if (rays[i].length > 230 && rays[i].length < 260)
+                    { rays[i].stepMultiple = 9; }
+                    if (rays[i].length > 210 && rays[i].length < 230)
+                    { rays[i].stepMultiple = 8; }
+                    if (rays[i].length > 180 && rays[i].length < 210)
+                    { rays[i].stepMultiple = 7; }
+                    if (rays[i].length > 150 && rays[i].length < 180)
+                    { rays[i].stepMultiple = 6; }
+                    if (rays[i].length > 120 && rays[i].length < 150)
+                    { rays[i].stepMultiple = 5; }
+                    if (rays[i].length > 90 && rays[i].length < 120)
+                    { rays[i].stepMultiple = 4; }
+                    if (rays[i].length > 60 && rays[i].length < 90)
+                    { rays[i].stepMultiple = 3; }
+                    if (rays[i].length > 30 && rays[i].length < 60)
+                    { rays[i].stepMultiple = 2; }
+                    if (rays[i].length > 0 && rays[i].length < 30)
+                    { rays[i].stepMultiple = 1; }
                 }
                 
             } break;
@@ -328,8 +356,31 @@ int main(void)
                             }
                             
                         } break;
+
+                        case lines:
+                        {
+                            for (int i = 0; i < NUM_OF_RAYS; i++)
+                            {
+                                if (rays[i].draw)
+                                {
+                                    DrawLine(rays[i].startPosition.x, rays[i].startPosition.y, rays[i].endPosition.x, rays[i].endPosition.y, WHITE);
+                                }
+                            }
+                            
+                        } break;
                 
                         default: break;
+                    }
+                    
+                    if (drawMap)
+                    {
+                        for (int i = 0; i < 100; i++)
+                        {
+                            if ( mapCubes[i].draw)
+                            {
+                                DrawRectangle(mapCubes[i].cubeBounds.x, mapCubes[i].cubeBounds.y, mapCubes[i].cubeBounds.width, mapCubes[i].cubeBounds.height, DARKGRAY);
+                            }
+                        }
                     }
                     
                     DrawPixel(player.position.x, player.position.y, GREEN);
@@ -350,6 +401,34 @@ int main(void)
                             averageSteps += rays[i].numberOfSteps;
                         }
                         averageSteps = averageSteps / frayCount;
+
+                        float averageMultiple = 0.0f;
+                        for (int i = 0; i < NUM_OF_RAYS; i++)
+                        {
+                            averageMultiple += rays[i].stepMultiple;
+                        }
+                        averageMultiple = averageMultiple / frayCount;
+
+                        switch (render)
+                        {
+                            case EndPoint:
+                            { DrawText("Ray Renderer: EndPoints", 20, 480, 10, GREEN); } break;
+
+                            case Gradient:
+                            { DrawText("Ray Renderer: Gradient", 20, 480, 10, GREEN); } break;
+
+                            case EndPointGradient:
+                            { DrawText("Ray Renderer: Gradient + EndPoints", 20, 480, 10, GREEN); } break;
+
+                            case lines:
+                            { DrawText("Ray Renderer: Lines", 20, 480, 10, GREEN); } break;
+
+                            case inverseGradient:
+                            { DrawText("Ray Renderer: Inverse Gradient", 20, 480, 10, GREEN); } break;
+                        
+                        default:
+                            break;
+                        }
                         DrawText(FormatText("Player Speed: %0.2f, %0.2f", player.speed.x, player.speed.y), 20, 490, 10, GREEN);
                         DrawText(FormatText("Player Position: %0.2f,%0.2f", player.position.x, player.position.y), 20, 500, 10, GREEN);
                         DrawText(FormatText("Average Ray Length: %0.2f", addedLength / rays[1].stepMultiple), 20, 510, 10, GREEN);
@@ -358,7 +437,7 @@ int main(void)
                         DrawText(FormatText("Target Frame Time: %0.2f ms", (1/(float)frameRate) * 1000), 20, 540, 10, GREEN);
                         DrawText(FormatText("Time Scale: %0.2f", GetFrameTime() / (1 / (float) frameRate)), 20, 550, 10, GREEN);
                         DrawText(FormatText("Set Frame Rate: %d", frameRate), 20, 560, 10, GREEN);
-                        DrawText(FormatText("Step Multiple: %d", rays[1].stepMultiple), 20, 570, 10, GREEN);
+                        DrawText(FormatText("Step Multiple: %0.2f", averageMultiple), 20, 570, 10, GREEN);
                         DrawText(FormatText("Number of Rays: %d", NUM_OF_RAYS), 20, 580, 10, GREEN);
                         DrawFPS(20,20);
                     }
