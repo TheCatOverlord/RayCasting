@@ -10,3 +10,7 @@ and compile with
 
 ## Running
 > ./main
+
+### Todo
+1. Ray bouncing
+2. Maps
